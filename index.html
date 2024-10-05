@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Monedas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            background-image: url('fondo.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .container {
+            max-width: 550px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.8); 
+            padding: 45px;
+            border-radius: 6px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        canvas {
+            margin-top: 20px;
+        }
+
+        footer {
+            margin-top: 30px;
+            font-size: 30px;
+            color: #000; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Conversor de Pesos Chilenos</h1>
+        <input type="number" id="clpAmount" placeholder="Ingrese monto en CLP">
+        <select id="currency">
+            <option value="dolar">Dólar</option>
+            <option value="euro">Euro</option>
+        </select>
+        <button id="convertBtn">Convertir</button>
+        <h3 id="result"></h3>
+        <canvas id="currencyChart"></canvas>
+    </div>
+
+    
+    <footer>
+        © 2024 Daniel Cortes P Todos Los Derechos Reservados.
+    </footer>
+
+    <script>
+        document.getElementById('convertBtn').addEventListener('click', () => {
+            const clpAmount = document.getElementById('clpAmount').value;
+            const currency = document.getElementById('currency').value;
+            
+            if (!clpAmount || clpAmount <= 0) {
+                alert('Por favor ingrese un monto válido en CLP.');
+                return;
+            }
+
+            
+            fetch(`https://mindicador.cl/api/${currency}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error en la consulta: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Datos de la API recibidos:", data);
+
+                    if (data && data.serie && data.serie.length > 0) {
+                        const exchangeRate = data.serie[0].valor;
+                        const convertedAmount = clpAmount / exchangeRate;
+                        document.getElementById('result').innerText = `${clpAmount} CLP son ${convertedAmount.toFixed(2)} ${currency.toUpperCase()}`;
+            
+                        
+                        const labels = data.serie.slice(0, 5).map(entry => entry.fecha.split('T')[0]);
+                        const values = data.serie.slice(0, 5).map(entry => entry.valor);
+            
+                        showChart(labels, values, currency.toUpperCase());
+                    } else {
+                        alert('No se encontraron datos históricos.');
+                    }
+                })
+                .catch(error => {
+                    alert('Ocurrió un error al consultar los datos.');
+                    console.error("Error:", error);
+                });
+        });
+
+        
+        function showChart(labels, values, currency) {
+            const ctx = document.getElementById('currencyChart').getContext('2d');
+            
+            if (window.myChart) {
+                window.myChart.destroy();  
+            }
+
+            window.myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.reverse(),
+                    datasets: [{
+                        label: `Valor del ${currency}`,
+                        data: values.reverse(),
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
